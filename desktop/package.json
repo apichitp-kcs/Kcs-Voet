@@ -1,0 +1,66 @@
+{
+  "name": "kcs-vote-desktop",
+  "version": "1.0.0",
+  "description": "KCS Vote — admin & results display",
+  "main": "main.js",
+  "scripts": {
+    "start": "node node_modules/electron/cli.js .",
+    "smoke": "node scripts/smoke.mjs",
+    "dist": "node node_modules/electron-builder/cli.js --win nsis portable",
+    "dist:portable": "node node_modules/electron-builder/cli.js --win portable",
+    "dist:installer": "node node_modules/electron-builder/cli.js --win nsis"
+  },
+  "author": "K Casting and Solution Co., Ltd.",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.119.1",
+    "exceljs": "^4.4.0",
+    "qrcode": "^1.5.4",
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0"
+  },
+  "productName": "KCS Vote",
+  "private": true,
+  "build": {
+    "appId": "com.kcs.vote",
+    "productName": "KCS Vote",
+    "copyright": "K Casting and Solution Co., Ltd.",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**",
+      "!renderer/dev-*",
+      "build/icon.png",
+      "node_modules/three/build/three.module.js",
+      "node_modules/three/build/three.core.js",
+      "node_modules/@supabase/supabase-js/dist/umd/**",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "shortcutName": "KCS Vote",
+      "artifactName": "KCS-Vote-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "KCS-Vote-Portable-${version}.${ext}"
+    }
+  }
+}

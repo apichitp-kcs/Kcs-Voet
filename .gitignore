@@ -1,0 +1,12 @@
+node_modules/
+.env
+.env.*
+!.env.example
+voter/config.js
+desktop/dist/
+desktop/smoke-out/
+kcs-vote.config.json
+*.log
+.DS_Store
+.wrangler/
+smoke-pkg/

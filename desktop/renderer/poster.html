@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'">
+  <title>KCS Vote QR</title>
+  <link rel="stylesheet" href="fonts.css">
+  <style>
+    @page { size: A4; margin: 0; }
+    html, body { margin: 0; height: 100%; }
+    body { font-family: Prompt, "Leelawadee UI", Tahoma, sans-serif; color: #1b1f33; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 6mm; padding: 14mm; box-sizing: border-box; border-top: 10mm solid #2A3890; }
+    img.logo { width: 90mm; }
+    h1 { font-size: 40pt; color: #2A3890; margin: 0; line-height: 1.1; }
+    h2 { font-size: 20pt; margin: 0; color: #5d6480; font-weight: 400; }
+    .topic { font-size: 18pt; font-weight: 600; max-width: 170mm; }
+    img.qr { width: 130mm; height: 130mm; border: 1.5mm solid #2A3890; border-radius: 6mm; padding: 4mm; }
+    .url { font-size: 12pt; color: #5d6480; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <img class="logo" src="assets/kcs-logo-transparent.png" alt="KCS">
+  <h1 id="h"></h1><h2 id="s"></h2>
+  <img class="qr" id="qr" alt="QR">
+  <div class="topic" id="t"></div>
+  <div class="url" id="u"></div>
+  <script src="poster.js"></script>
+</body>
+</html>

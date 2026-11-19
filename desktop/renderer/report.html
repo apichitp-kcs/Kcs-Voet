@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'">
+  <title>KCS Vote report</title>
+  <link rel="stylesheet" href="fonts.css">
+  <style>
+    @page { size: A4; margin: 12mm; }
+    body { font-family: Prompt, "Leelawadee UI", Tahoma, sans-serif; color: #1b1f33; font-size: 10.5pt; margin: 0; }
+    header { display: flex; align-items: center; gap: 16px; border-bottom: 3px solid #2A3890; padding-bottom: 10px; margin-bottom: 14px; }
+    header img { height: 54px; }
+    header .t { flex: 1; }
+    h1 { font-size: 17pt; color: #2A3890; margin: 0; line-height: 1.25; }
+    h2 { font-size: 12pt; color: #2A3890; margin: 18px 0 6px; border-left: 4px solid #2A3890; padding-left: 8px; }
+    .muted { color: #5d6480; }
+    .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
+    .meta div { background: #eef0fa; border-radius: 8px; padding: 6px 10px; }
+    .meta b { display: block; font-size: 13pt; color: #2A3890; }
+    table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
+    tr { page-break-inside: avoid; }
+    th { background: #2A3890; color: #fff; font-weight: 500; text-align: left; padding: 5px 8px; font-size: 9.5pt; }
+    td { padding: 5px 8px; border-bottom: 1px solid #e3e6f0; }
+    td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+    tr.r1 td { background: #fff7db; font-weight: 600; } tr.r2 td { background: #f3f5f9; } tr.r3 td { background: #fbefe4; }
+    .barcell { width: 32%; }
+    .bar { height: 10px; background: linear-gradient(90deg, #2A3890, #4357d6); border-radius: 5px; }
+    .flag { color: #c2410c; font-weight: 600; }
+    ol { margin: 4px 0; padding-left: 20px; } li { margin: 3px 0; }
+    footer { margin-top: 18px; font-size: 8.5pt; color: #5d6480; border-top: 1px solid #e3e6f0; padding-top: 6px; display: flex; justify-content: space-between; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="report.js"></script>
+</body>
+</html>

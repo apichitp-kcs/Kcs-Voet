@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: wss:">
+  <title>KCS Vote — Admin</title>
+  <link rel="stylesheet" href="fonts.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div id="gate" class="gate"></div>
+  <div id="shell" class="shell" hidden>
+    <aside class="side">
+      <img class="side-logo" src="assets/kcs-logo-transparent.png" alt="KCS">
+      <div class="side-app">KCS Vote · <span data-t="admin"></span></div>
+      <nav id="nav"></nav>
+      <div class="side-foot">
+        <button id="langBtn" class="btn ghost sm">EN</button>
+        <button id="lockBtn" class="btn ghost sm" data-t="lock"></button>
+      </div>
+    </aside>
+    <main id="view" class="view"></main>
+  </div>
+  <div id="modal" class="modal" hidden></div>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <script src="../node_modules/@supabase/supabase-js/dist/umd/supabase.js"></script>
+  <script type="module" src="admin.js"></script>
+</body>
+</html>

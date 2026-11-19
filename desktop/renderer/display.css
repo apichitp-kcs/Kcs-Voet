@@ -1,0 +1,75 @@
+:root { --blue: #2A3890; --gold: #f2c94c; --ink: #fff; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1038; color: #fff; cursor: none;
+  font-family: Prompt, "Leelawadee UI", Tahoma, sans-serif; -webkit-font-smoothing: antialiased; user-select: none; }
+#stage { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+.layer { position: fixed; inset: 0; pointer-events: none; }
+.hint { position: fixed; right: 1.2vw; bottom: 1vh; font-size: 12px; opacity: .25; }
+.fade { animation: fadeIn .9s ease both; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(2vh); } }
+
+/* brand strip */
+.brand { position: absolute; top: 3.5vh; left: 3.5vw; display: flex; align-items: center; gap: 1.4vw; }
+.brand img { height: 7vh; }
+.brand span { font-size: 1.6vh; letter-spacing: .25em; opacity: .7; text-transform: uppercase; }
+
+/* idle */
+.idle { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+.idle img { width: 38vw; max-width: 900px; filter: drop-shadow(0 1.5vh 4vh rgba(0, 0, 0, .35)); }
+.idle h1 { font-size: 4.6vh; font-weight: 600; margin: 4vh 0 1vh; }
+.idle p { font-size: 2.4vh; opacity: .7; margin: 0; }
+
+/* voting */
+.voting { position: absolute; inset: 0; display: grid; grid-template-columns: 1.25fr 1fr; align-items: center; padding: 12vh 6vw 8vh; gap: 5vw; }
+.voting h1 { font-size: 6vh; line-height: 1.2; font-weight: 700; margin: 0 0 2vh; text-shadow: 0 .6vh 3vh rgba(0, 0, 0, .3); }
+.voting .desc { font-size: 2.6vh; opacity: .8; margin: 0 0 5vh; }
+.counter { display: flex; align-items: center; gap: 3vw; }
+.ring { width: 26vh; height: 26vh; position: relative; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 9; }
+.ring .bg { stroke: rgba(255, 255, 255, .12); }
+.ring .fg { stroke: url(#g); stroke-linecap: round; transition: stroke-dashoffset 1s cubic-bezier(.2, .8, .2, 1); }
+.ring .pct { position: absolute; inset: 0; display: grid; place-items: center; font-size: 5vh; font-weight: 600; }
+.count-big { font-size: 13vh; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.count-big small { font-size: 5vh; opacity: .6; font-weight: 400; }
+.count-label { font-size: 2.6vh; opacity: .75; letter-spacing: .05em; }
+.soon { margin-top: 4vh; font-size: 2.2vh; opacity: .6; }
+.qrcard { justify-self: center; background: #fff; color: #1b1f33; border-radius: 3vh; padding: 3.5vh; text-align: center; box-shadow: 0 3vh 8vh rgba(0, 0, 0, .45); }
+.qrcard img { width: 46vh; height: 46vh; display: block; }
+.qrcard b { display: block; font-size: 3.4vh; color: var(--blue); margin-top: 1.5vh; }
+.qrcard span { font-size: 1.9vh; color: #5d6480; word-break: break-all; }
+.bump { animation: bump .5s ease; }
+@keyframes bump { 40% { transform: scale(1.06); color: var(--gold); } }
+
+/* reveal captions */
+.reveal-title { position: absolute; top: 8vh; left: 0; right: 0; text-align: center; transition: opacity .8s, transform .8s; }
+.reveal-title h1 { font-size: 7vh; margin: 0; font-weight: 700; letter-spacing: .02em; text-shadow: 0 0 4vh rgba(120, 150, 255, .6); }
+.reveal-title p { font-size: 3vh; margin: 1vh 0 0; opacity: .8; }
+.reveal-title.small { transform: translateY(-5vh) scale(.6); opacity: .85; }
+.caption { position: absolute; left: 50%; bottom: 4vh; transform: translateX(-50%); min-width: 36vw; max-width: 80vw; text-align: center;
+  background: linear-gradient(135deg, rgba(42, 56, 144, .92), rgba(20, 28, 90, .92)); border: 1px solid rgba(255, 255, 255, .25);
+  border-radius: 2.4vh; padding: 2vh 4vw; box-shadow: 0 2vh 6vh rgba(0, 0, 0, .5); animation: capIn .7s cubic-bezier(.2, .9, .2, 1.2) both; }
+.caption .rk { font-size: 2.6vh; letter-spacing: .2em; opacity: .8; text-transform: uppercase; }
+.caption .nm { font-size: 5.2vh; font-weight: 700; line-height: 1.2; }
+.caption .sc { font-size: 2.8vh; opacity: .85; }
+.caption.gold { background: linear-gradient(135deg, #f7d774, #c8961a); color: #231a00; border-color: #fff3c4; }
+.caption.silver { background: linear-gradient(135deg, #eef1f7, #aab3c5); color: #1b1f33; }
+.caption.bronze { background: linear-gradient(135deg, #f0bb8a, #a9662b); color: #2a1404; }
+.tie { display: inline-block; margin-left: 1vw; font-size: 2vh; background: rgba(0, 0, 0, .25); border-radius: 999px; padding: .3vh 1.2vw; vertical-align: middle; }
+@keyframes capIn { from { opacity: 0; transform: translate(-50%, 4vh) scale(.9); } }
+
+/* ranking + rules */
+.panel-title { position: absolute; top: 4vh; left: 0; right: 0; text-align: center; font-size: 4.8vh; font-weight: 700; }
+.panel-title small { display: block; font-size: 2.2vh; font-weight: 400; opacity: .7; }
+.chart-wrap { position: absolute; left: 3vw; top: 14vh; bottom: 4vh; width: 60vw; }
+.rank-list { position: absolute; right: 3vw; top: 14vh; bottom: 4vh; width: 32vw; display: flex; flex-direction: column; gap: .9vh; overflow: hidden; }
+.rank-list .it { display: grid; grid-template-columns: 6vh 1fr auto; align-items: center; gap: 1vw; background: rgba(255, 255, 255, .07);
+  border: 1px solid rgba(255, 255, 255, .1); border-radius: 1.4vh; padding: calc(var(--rs, 1) * .9vh) 1.2vw; font-size: calc(var(--rs, 1) * 2.3vh); animation: fadeIn .6s both; }
+.rank-list .no { width: calc(var(--rs, 1) * 5vh); height: calc(var(--rs, 1) * 5vh); border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .12); font-weight: 700; }
+.rank-list .it.r1 .no { background: #f2c94c; color: #2a1f00; } .rank-list .it.r2 .no { background: #cfd6e4; color: #1b1f33; } .rank-list .it.r3 .no { background: #d39a62; color: #2a1404; }
+.rank-list .sc { font-variant-numeric: tabular-nums; opacity: .9; font-weight: 600; }
+.rules { position: absolute; inset: 14vh 8vw 4vh; display: grid; gap: 2.4vh; align-content: start; }
+.rules ol { margin: 0; padding-left: 3vw; display: grid; gap: 1.3vh; font-size: 2.7vh; line-height: 1.4; }
+.rules ol li::marker { color: var(--gold); font-weight: 700; }
+.rules .alt { font-size: 1.6vh; opacity: .55; }
+.rules .alt ol { font-size: 1.6vh; gap: .4vh; line-height: 1.35; }

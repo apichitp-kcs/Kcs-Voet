@@ -1,0 +1,27 @@
+{
+  "name": "kcs-vote",
+  "version": "1.0.0",
+  "description": "KCS Vote — anonymous, department-weighted voting for K Casting and Solution Co., Ltd.",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "node --test tests/db.test.mjs",
+    "assets": "node scripts/copy-assets.mjs",
+    "voter:config": "node scripts/voter-config.mjs",
+    "voter:serve": "npx --yes http-server voter -p 5173 -c-1",
+    "voter:deploy": "npm run voter:config && npx --yes wrangler pages deploy voter --project-name kcs-vote",
+    "desktop:install": "cd desktop && npm install",
+    "desktop:start": "cd desktop && npm start",
+    "desktop:dist": "cd desktop && npm run dist"
+  },
+  "author": "K Casting and Solution Co., Ltd.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
+    "@fontsource/prompt": "^5.3.0",
+    "sharp": "^0.35.5"
+  },
+  "private": true
+}
