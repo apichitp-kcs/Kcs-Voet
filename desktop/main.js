@@ -160,6 +160,7 @@ function lockNavigation(win) {
 // ---------------------------------------------------------------------------
 const ExcelJS = require('exceljs');
 const QRCode = require('qrcode');
+const updater = require('./updater');
 
 async function readXlsx(file) {
   const wb = new ExcelJS.Workbook();
@@ -317,9 +318,15 @@ function registerIpc() {
     if (r.canceled) return null;
     return readXlsx(r.filePaths[0]);
   });
+  // Saves straight into Downloads (no dialog to miss) and shows it in Explorer.
   handle('xlsx:template', async () => {
-    const file = await saveDialog('kcs-employees-template.xlsx', [{ name: 'Excel', extensions: ['xlsx'] }]);
-    if (!file) return null; await writeTemplate(file); return file;
+    const dir = app.getPath('downloads');
+    fs.mkdirSync(dir, { recursive: true });
+    let file = path.join(dir, 'kcs-employees-template.xlsx');
+    for (let i = 2; fs.existsSync(file); i++) file = path.join(dir, `kcs-employees-template (${i}).xlsx`);
+    await writeTemplate(file);
+    shell.showItemInFolder(file);
+    return file;
   });
   handle('export:xlsx', async (_e, data) => {
     const file = await saveDialog(`${safeName(data.title)}-${stamp()}.xlsx`, [{ name: 'Excel', extensions: ['xlsx'] }]);
@@ -354,6 +361,11 @@ function registerIpc() {
     return true;
   });
   handle('display:qr', (_e, url) => qrDataUrl(String(url), 900));
+
+  handle('update:status', () => updater.getStatus());
+  handle('update:check', () => { updater.check(); return true; });
+  handle('update:install', () => { updater.install(); return true; });
+  handle('update:releases', () => { updater.openReleases(); return true; });
 }
 
 // ---------------------------------------------------------------------------
@@ -370,6 +382,7 @@ app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   registerIpc();
   createAdmin();
+  updater.setup((st) => { if (adminWin) adminWin.webContents.send('update:status', st); });
   if (process.env.KCS_SMOKE_DIR) smokeTest(process.env.KCS_SMOKE_DIR);
 });
 
@@ -398,11 +411,15 @@ async function smokeTest(dir) {
     await writeTemplate(path.join(dir, 'template.xlsx'));
     const back = await readXlsx(path.join(dir, 'template.xlsx'));
     fs.writeFileSync(path.join(dir, 'template-read.json'), JSON.stringify(back, null, 2));
+    const { autoUpdater } = require('electron-updater');
+    console.log('updater module', typeof autoUpdater.checkForUpdates === 'function' ? 'ok' : 'MISSING', updater.getStatus().current);
     console.log('SMOKE OK', dir);
   } catch (e) { console.error('SMOKE FAIL', e); process.exitCode = 1; }
   app.quit();
 }
 
+// The smoke test uses its own profile so it can run while the real app is open.
+if (process.env.KCS_SMOKE_DIR) app.setPath('userData', path.join(app.getPath('temp'), 'kcs-vote-smoke'));
 if (!app.requestSingleInstanceLock()) app.quit();
 app.on('second-instance', () => { if (adminWin) { if (adminWin.isMinimized()) adminWin.restore(); adminWin.focus(); } });
 app.on('window-all-closed', () => app.quit());

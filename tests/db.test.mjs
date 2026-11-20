@@ -376,3 +376,47 @@ describe('topics + import', () => {
     assert.equal(status, 'revealed');
   });
 });
+
+// ---------------------------------------------------------------------------
+describe('keep-alive', () => {
+  test('anon can ping; output has no personal data; log is not readable', async () => {
+    const db = await freshDb();
+    await seedEmployees(db, { A: 3 });
+    const [{ r }] = await asAnon(db, () => rpc(db, `select keep_alive('cf-worker') as r`));
+    assert.deepEqual(Object.keys(r).sort(), ['at', 'ok']);
+    assert.equal(r.ok, true);
+    assert.ok(!/ชื่อ|A-00|emp_code|first_name/.test(JSON.stringify(r)), 'no personal data');
+    await assert.rejects(asAnon(db, () => rpc(db, 'select * from keep_alive_log')), /permission denied/);
+    await assert.rejects(as(db, 'authenticated', STRANGER, () => rpc(db, 'select * from keep_alive_log')), /permission denied/);
+    const [log] = await rpc(db, 'select source, last_ping from keep_alive_log');
+    assert.equal(log.source, 'cf-worker');
+  });
+
+  test('pings more often than once a minute are ignored but still ok', async () => {
+    const db = await freshDb();
+    await asAnon(db, () => rpc(db, `select keep_alive('github')`));
+    const [first] = await rpc(db, 'select last_ping, source from keep_alive_log');
+    const [{ r }] = await asAnon(db, () => rpc(db, `select keep_alive('desktop') as r`));
+    assert.equal(r.ok, true);
+    const [second] = await rpc(db, 'select last_ping, source from keep_alive_log');
+    assert.equal(second.source, 'github');
+    assert.equal(+second.last_ping, +first.last_ping);
+    // after a minute it counts again
+    await rpc(db, `update keep_alive_log set last_ping = now() - interval '2 minutes'`);
+    await asAnon(db, () => rpc(db, `select keep_alive('desktop')`));
+    const [third] = await rpc(db, 'select source from keep_alive_log');
+    assert.equal(third.source, 'desktop');
+  });
+
+  test('source is sanitised and status is admin-only', async () => {
+    const db = await freshDb();
+    await asAnon(db, () => rpc(db, `select keep_alive('<script>x</script> ' || repeat('a', 100))`));
+    const [{ source }] = await rpc(db, 'select source from keep_alive_log');
+    assert.ok(/^[A-Za-z0-9_.:-]{1,40}$/.test(source), source);
+    await assert.rejects(asAnon(db, () => rpc(db, 'select get_keep_alive_status()')), /permission denied/);
+    await assert.rejects(as(db, 'authenticated', STRANGER, () => rpc(db, 'select get_keep_alive_status()')), /NOT_ADMIN/);
+    const [{ s }] = await asAdmin(db, () => rpc(db, 'select get_keep_alive_status() as s'));
+    assert.equal(s.source, source);
+    assert.ok(s.last_ping);
+  });
+});

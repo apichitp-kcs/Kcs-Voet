@@ -26,7 +26,7 @@ KCS-Vote/
 ## 1. Supabase (one time, ~10 minutes)
 
 1. Create a **new** project at <https://supabase.com> (free plan, region *Southeast Asia (Singapore)*). Save the database password somewhere safe.
-2. **SQL Editor → New query** → paste the whole file `supabase/migrations/20261119000001_kcs_vote_init.sql` → **Run**.
+2. **SQL Editor → New query** → paste and **Run** each file in `supabase/migrations/` **in order**: `…0001_kcs_vote_init.sql`, then `…0002_keep_alive.sql`.
    *(Alternative with the CLI: `npx supabase link --project-ref <ref>` then `npx supabase db push`.)*
 3. **Authentication → Users → Add user → Create new user**: admin email + strong password, tick *Auto Confirm User*.
 4. **SQL Editor**: open `supabase/add-admin.sql`, replace the email, **Run**. It must list the admin.
@@ -34,7 +34,7 @@ KCS-Vote/
 6. **Project Settings → API Keys**: copy the **Project URL** and the **anon** (or **publishable**) key.
    ⚠️ Never use the `service_role` / secret key anywhere in this project.
 
-> Free-tier projects pause after 7 days without activity. Open the dashboard (or the admin app) a day before the event.
+> Free-tier projects pause after ~7 days without database activity. Set up the keep-alive (section “Never paused” below) and check **Last DB activity** in the admin app (*Settings*).
 
 ## 2. Voter page on Cloudflare Pages
 
@@ -65,7 +65,7 @@ Try the UI without any backend: open the page with `?demo=1` (e.g. `npm run vote
 ```bash
 cd desktop
 npm install                # downloads Electron
-npm run dist               # → desktop/dist/KCS-Vote-Setup-1.0.0.exe and KCS-Vote-Portable-1.0.0.exe
+npm run dist               # → desktop/dist/KCS-Vote-Setup-<version>.exe and KCS-Vote-Portable-<version>.exe
 ```
 `npm start` runs it without building; `npm run smoke` renders a sample PDF/Excel/QR poster into `desktop/smoke-out/` as a self-check.
 The `.exe` is not code-signed, so Windows SmartScreen shows “More info → Run anyway” the first time.
@@ -79,7 +79,67 @@ It signs in to test everything, then saves `kcs-vote.config.json`:
 - The Supabase password inside is encrypted (AES-256-GCM) with a key derived from the app password (scrypt). The file works on any PC, but only with the app password. *Settings → Export config* / *Import config* move it between PCs.
 - 5 wrong app passwords → increasing lock-out.
 
+### Automatic updates
+
+Installed copies (**KCS-Vote-Setup-x.y.z.exe**) update themselves from this repository's GitHub Releases (`apichitp-kcs/Kcs-Voet`, set in `desktop/package.json → build.publish` and `desktop/updater.js`):
+
+- The app checks at start-up and every 2 h, downloads in the background, and installs **when the app is closed** — never in the middle of an event. A banner offers *Restart & update now*; *Settings → App updates* shows the version and a *Check for updates* button.
+- The **portable** exe cannot replace itself; it only shows “new version available” with a link to the download page. Use the installer on any PC that should stay up to date (install it once; after that, no more copying files around).
+- Your settings file is not touched by updates. Use *Settings → Export config* / *Import config file…* to move it to the installed copy.
+
+**Publishing a new version** (built by GitHub Actions, `.github/workflows/release.yml`, no token needed):
+
+```bash
+# 1. bump "version" in desktop/package.json, e.g. 1.1.0 -> 1.1.1, and commit
+git tag v1.1.1
+git push && git push origin v1.1.1
+```
+
+The workflow builds on Windows and publishes the release with `KCS-Vote-Setup`, `KCS-Vote-Portable` and `latest.yml`. The tag must equal the version in `desktop/package.json`. Releases of a public repository are downloadable by anyone — this is harmless (no secrets are inside the exe; the config file and app password are needed to use it).
+
+> The exe is not code-signed. On PCs with **Smart App Control** turned on, Windows blocks it (and its updates). Use a PC without Smart App Control, or buy a code-signing certificate and add it to electron-builder.
+
+## 3½. Never paused (keep-alive)
+
+**Why:** Supabase pauses free projects after ~7 days of low **database** activity. A ping that only reaches an HTTP endpoint does not count, so every ping calls the RPC `public.keep_alive()`, which does a real read (`count(*)` of topics and employees — no row data is returned) plus a one-row upsert into `keep_alive_log`. It returns only `{ok, at}`, uses the public anon key (never `service_role`), and ignores pings more frequent than once a minute.
+
+Three independent layers:
+
+| Layer | Schedule | Setup |
+|---|---|---|
+| 1. Cloudflare Worker cron (`keepalive-worker/`) | every 12 h (00:00 / 12:00 UTC) | below |
+| 2. GitHub Actions (`.github/workflows/keep-alive.yml`) | every 2nd day 03:00 UTC + manual run | below |
+| 3. Admin app | at every start and every 6 h while open | automatic |
+
+**Layer 1 — Cloudflare Worker** (free plan; no route, no public URL; one request per run, one retry after 5 s):
+
+```bash
+cd keepalive-worker
+npx wrangler secret put SUPABASE_URL          # https://<ref>.supabase.co
+npx wrangler secret put SUPABASE_ANON_KEY     # anon / publishable key
+npx wrangler secret put ALERT_WEBHOOK         # optional: Slack/Discord/Google Chat webhook, called if both attempts fail
+cd ..
+npm run keepalive:deploy
+```
+
+(The first `secret put` may offer to create the Worker — answer yes.) Verify with `npm run keepalive:tail` and wait for the next cron, or in the Cloudflare dashboard open the Worker → *Settings → Trigger events* (cron listed) and *Logs* (“keep-alive ok”). `node keepalive-worker/test.mjs` tests the Worker logic offline.
+
+**Layer 2 — GitHub Actions:** push the repo to GitHub → *Settings → Secrets and variables → Actions* → add `SUPABASE_URL` and `SUPABASE_ANON_KEY` → *Actions → Supabase keep-alive → Run workflow* once to test. The job fails (and GitHub e-mails you) if the HTTP status is not 200 or `ok` is not `true`.
+⚠️ GitHub **disables scheduled workflows after 60 days without repository activity**. When you get that e-mail, re-enable the workflow in the *Actions* tab (or push a commit now and then).
+
+**How to check:** admin app → *Settings* → **Last DB activity** (time + source: `cf-worker` / `github` / `desktop`). It turns red when older than 3 days, and the app warns at start-up if the database was idle for more than 3 days before it was opened. Or in Supabase: *Table Editor → keep_alive_log*.
+
+**Already paused?** Supabase Dashboard → the project → **Resume project** (takes a few minutes; data is kept). A paused free project can only be resumed for a limited time (currently about 90 days); after that only a backup download is offered — do not ignore the pause warning e-mails.
+
 ## 4. Running an event
+
+**Pre-event checklist (the day before):**
+- [ ] Admin app → *Settings*: **Last DB activity** is less than 24 h old (`keep_alive_log.last_ping` < 24 h).
+- [ ] Employees imported; headcount per department looks right.
+- [ ] Topic options = the 12 departments; scoring parameters and the *Rules* page checked.
+- [ ] QR poster printed; the voter URL opens on a phone over mobile data.
+- [ ] Projector connected; *Open display* goes fullscreen on it.
+
 
 1. **Employees** → *Download template* or use your own Excel: columns `emp_code`, `first_name`, `last_name`, `department` (Thai headers such as รหัส / ชื่อ / นามสกุล / แผนก / “ชื่อ-นามสกุล” are auto-detected; titles นาย/นาง/นางสาว are stripped). Preview shows duplicates and blanks; choose **Replace all** or **Merge/update**.
 2. **Topics** → *New topic* → *Use all departments* (creates the 12 department options, linked for self-vote detection). Optional start/end time; weighting on/off, own-department weight, minimum turnout, exclude low turnout, allow undo.
@@ -131,7 +191,7 @@ Voters never see results. The name list is only served while a topic is acceptin
 
 ```bash
 npm install
-npm test                 # 18 DB tests: scoring fixtures (50 vs 5, self vote, low turnout, ties, unweighted),
+npm test                 # 21 DB tests (incl. keep-alive): scoring fixtures (50 vs 5, self vote, low turnout, ties, unweighted),
                          # one-vote-per-name, idempotent retry, time window, undo, anonymity, RLS/grants
 npm run assets           # re-copy fonts/logos into voter/ and desktop/renderer/
 ```

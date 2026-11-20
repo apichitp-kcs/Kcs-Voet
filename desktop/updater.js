@@ -1,0 +1,70 @@
+// Auto-update from GitHub Releases (repo set in package.json -> build.publish).
+// * Installed (NSIS) app: electron-updater downloads new versions in the
+//   background and installs them when the app is closed (never mid-event),
+//   or immediately if the admin clicks "Restart & update".
+// * Portable exe cannot replace itself: it only checks the latest release and
+//   shows a "new version available" link.
+'use strict';
+const { app, net, shell } = require('electron');
+
+// Keep in sync with package.json -> build.publish (electron-builder strips the
+// build section from the packaged package.json, so it cannot be read at runtime).
+const pub = { owner: 'apichitp-kcs', repo: 'Kcs-Voet' };
+const RELEASES_URL = `https://github.com/${pub.owner}/${pub.repo}/releases/latest`;
+const isPortable = !!process.env.PORTABLE_EXECUTABLE_DIR;
+
+let status = { state: 'idle', current: app.getVersion(), portable: isPortable };
+let notify = () => {};
+const set = (s) => { status = { ...status, ...s, current: app.getVersion(), portable: isPortable }; notify(status); };
+
+const newer = (a, b) => {
+  const pa = String(a).replace(/^v/, '').split('.').map(Number);
+  const pb = String(b).replace(/^v/, '').split('.').map(Number);
+  for (let i = 0; i < 3; i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) > (pb[i] || 0);
+  return false;
+};
+
+async function checkPortable() {
+  try {
+    set({ state: 'checking' });
+    const res = await net.fetch(`https://api.github.com/repos/${pub.owner}/${pub.repo}/releases/latest`,
+      { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'kcs-vote-desktop' } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const rel = await res.json();
+    if (newer(rel.tag_name, app.getVersion())) set({ state: 'portable-new', version: String(rel.tag_name).replace(/^v/, '') });
+    else set({ state: 'latest' });
+  } catch (e) { set({ state: 'error', message: e.message }); }
+}
+
+let autoUpdater = null;
+function check() {
+  if (!app.isPackaged) return set({ state: 'dev' });
+  if (isPortable) return checkPortable();
+  return autoUpdater.checkForUpdates().catch((e) => set({ state: 'error', message: e.message }));
+}
+
+function setup(onStatus) {
+  notify = onStatus;
+  if (!app.isPackaged || process.env.KCS_SMOKE_DIR) { set({ state: 'dev' }); return; }
+  if (!isPortable) {
+    ({ autoUpdater } = require('electron-updater'));
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;
+    autoUpdater.on('checking-for-update', () => set({ state: 'checking' }));
+    autoUpdater.on('update-not-available', () => set({ state: 'latest' }));
+    autoUpdater.on('update-available', (i) => set({ state: 'downloading', version: i.version, percent: 0 }));
+    autoUpdater.on('download-progress', (p) => set({ state: 'downloading', percent: Math.round(p.percent) }));
+    autoUpdater.on('update-downloaded', (i) => set({ state: 'ready', version: i.version }));
+    autoUpdater.on('error', (e) => set({ state: 'error', message: String(e && e.message || e).slice(0, 200) }));
+  }
+  setTimeout(check, 5000);
+  setInterval(check, 2 * 3600e3);
+}
+
+module.exports = {
+  setup,
+  check,
+  getStatus: () => status,
+  install: () => { if (autoUpdater && status.state === 'ready') autoUpdater.quitAndInstall(false, true); },
+  openReleases: () => shell.openExternal(RELEASES_URL),
+};

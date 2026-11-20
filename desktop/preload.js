@@ -20,6 +20,13 @@ contextBridge.exposeInMainWorld('kcs', {
   exportPdf: call('export:pdf'),
   qr: { dataUrl: call('qr:dataUrl'), savePng: call('qr:savePng'), posterPdf: call('qr:posterPdf'), print: call('qr:print') },
   showFile: call('file:show'),
+  update: {
+    status: call('update:status'),
+    check: call('update:check'),
+    install: call('update:install'),
+    releases: call('update:releases'),
+    onStatus: (fn) => ipcRenderer.on('update:status', (_e, s) => fn(s)),
+  },
   display: {
     open: call('display:open'),
     close: call('display:close'),

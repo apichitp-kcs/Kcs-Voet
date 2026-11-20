@@ -1,6 +1,6 @@
 {
   "name": "kcs-vote-desktop",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "KCS Vote — admin & results display",
   "main": "main.js",
   "scripts": {
@@ -8,12 +8,14 @@
     "smoke": "node scripts/smoke.mjs",
     "dist": "node node_modules/electron-builder/cli.js --win nsis portable",
     "dist:portable": "node node_modules/electron-builder/cli.js --win portable",
-    "dist:installer": "node node_modules/electron-builder/cli.js --win nsis"
+    "dist:installer": "node node_modules/electron-builder/cli.js --win nsis",
+    "release": "node node_modules/electron-builder/cli.js --win nsis portable --publish always"
   },
   "author": "K Casting and Solution Co., Ltd.",
   "license": "UNLICENSED",
   "dependencies": {
     "@supabase/supabase-js": "^2.119.1",
+    "electron-updater": "^6.8.11",
     "exceljs": "^4.4.0",
     "qrcode": "^1.5.4",
     "three": "^0.187.0"
@@ -41,7 +43,8 @@
       "node_modules/three/build/three.module.js",
       "node_modules/three/build/three.core.js",
       "node_modules/@supabase/supabase-js/dist/umd/**",
-      "package.json"
+      "package.json",
+      "updater.js"
     ],
     "asar": true,
     "win": {
@@ -61,6 +64,14 @@
     },
     "portable": {
       "artifactName": "KCS-Vote-Portable-${version}.${ext}"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "apichitp-kcs",
+        "repo": "Kcs-Voet",
+        "releaseType": "release"
+      }
+    ]
   }
 }

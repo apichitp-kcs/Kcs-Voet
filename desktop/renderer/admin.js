@@ -28,7 +28,7 @@ function toast(msg, kind = '', action) {
   el.innerHTML = `<span>${esc(msg)}</span>`;
   if (action) { const b = document.createElement('button'); b.textContent = action.label; b.onclick = action.fn; el.append(b); }
   $('#toasts').append(el);
-  setTimeout(() => el.remove(), kind === 'err' ? 7000 : 4000);
+  setTimeout(() => el.remove(), kind === 'err' || action ? 9000 : 4000);
 }
 function errText(e) {
   const raw = (e && (e.message || e.error_description || e.msg)) || String(e);
@@ -149,12 +149,14 @@ async function enterApp() {
   await loadTopics();
   subscribeRealtime();
   startPolling();
+  keepAliveStart();
   A.display.open = await window.kcs.display.isOpen();
   show(A.view);
 }
 
 async function lockApp() {
   stopPolling();
+  clearInterval(A.kaTimer); A.kaTimer = null;
   if (A.channel) { await A.sb.removeChannel(A.channel); A.channel = null; }
   if (A.chart) { A.chart.dispose(); A.chart = null; }
   try { await A.sb.auth.signOut(); } catch { /* offline */ }
@@ -207,6 +209,22 @@ function startPolling() {
   refreshStats();
 }
 function stopPolling() { clearInterval(A.pollTimer); A.pollTimer = null; }
+
+// ---------------------------------------------------------------- keep-alive (anti-pause)
+// Every app start and every 6 h while open: a real DB read+write via keep_alive().
+const KA_STALE_MS = 3 * 24 * 3600e3;
+const kaAge = (s) => (s && s.last_ping ? Date.now() - new Date(s.last_ping).getTime() : Infinity);
+async function keepAlivePing() {
+  try { await rpc('keep_alive', { source: 'desktop' }); } catch (e) { console.warn('keep_alive', e); }
+}
+async function keepAliveStart() {
+  // read the status BEFORE pinging, so a silent Worker/GitHub job is still noticed
+  try { A.kaBefore = await rpc('get_keep_alive_status'); } catch (e) { A.kaBefore = null; console.warn(e); }
+  await keepAlivePing();
+  clearInterval(A.kaTimer);
+  A.kaTimer = setInterval(keepAlivePing, 6 * 3600e3);
+  if (A.kaBefore && kaAge(A.kaBefore) > KA_STALE_MS) toast(t('kaStaleBefore', fmtDate(A.kaBefore.last_ping) || t('kaNever')), 'err');
+}
 
 // ---------------------------------------------------------------- display relay
 async function pushDisplay() {
@@ -527,7 +545,12 @@ async function viewEmployees() {
     <div class="grid g2" style="margin-top:16px"><div class="card"><h2>${t('departments')}</h2><div class="tablewrap"><table><thead><tr><th>${t('department')}</th><th class="num">${t('people')}</th></tr></thead><tbody id="dBody"></tbody></table></div></div>
     <div class="card"><div class="row"><h2 style="margin:0">${t('current')}</h2><input type="search" id="eSearch" placeholder="${t('search')}" style="max-width:260px;margin-left:auto"></div>
     <div class="tablewrap" style="margin-top:10px"><table><thead><tr><th>${t('empCode')}</th><th>${t('firstName')}</th><th>${t('lastName')}</th><th>${t('department')}</th></tr></thead><tbody id="eBody"></tbody></table></div></div></div>`;
-  $('#tpl').onclick = async () => { const f = await window.kcs.xlsx.template(); if (f) toast(`${t('exported')}: ${f}`, 'ok', { label: t('showInFolder'), fn: () => window.kcs.showFile(f) }); };
+  $('#tpl').onclick = async () => {
+    try {
+      const f = await window.kcs.xlsx.template();
+      if (f) toast(`${t('exported')}: ${f}`, 'ok', { label: t('showInFolder'), fn: () => window.kcs.showFile(f) });
+    } catch (e) { fail(e); }
+  };
   $('#imp').onclick = async () => { try { const d = await window.kcs.xlsx.open(); if (d) { A.importData = d; drawImport(true); } } catch (e) { fail(e); } };
   try {
     const [depts, emps] = await Promise.all([rpc('admin_departments'), rpc('admin_list_employees')]);
@@ -687,7 +710,19 @@ async function viewAudit() {
 async function viewSettings() {
   const v = $('#view');
   const st = await window.kcs.cfg.status();
-  v.innerHTML = `<div class="head"><h1>${t('navSettings')}</h1></div><div class="grid g2">
+  let ka = null; try { ka = await rpc('get_keep_alive_status'); } catch (e) { console.warn(e); }
+  const kaStale = kaAge(ka) > KA_STALE_MS; const beforeStale = A.kaBefore && kaAge(A.kaBefore) > KA_STALE_MS;
+  v.innerHTML = `<div class="head"><h1>${t('navSettings')}</h1></div>
+    <div class="card grid" style="margin-bottom:16px"><div class="row"><h2 style="margin:0">${t('kaTitle')}</h2><span class="spacer"></span><button class="btn ghost sm" id="kaPing">⟳ ${t('kaPingNow')}</button></div>
+      ${kaStale || beforeStale ? `<div class="err">⚠ ${esc(kaStale ? t('kaStale') : t('kaStaleBefore', fmtDate(A.kaBefore.last_ping) || t('kaNever')))}</div>` : ''}
+      <div>${t('kaLast')}: <b>${ka && ka.last_ping ? esc(fmtDate(ka.last_ping)) : t('kaNever')}</b>${ka && ka.source ? ` <span class="badge">${esc(ka.source)}</span>` : ''}</div>
+      ${A.kaBefore ? `<div class="small muted">${t('kaBeforeLabel')}: ${A.kaBefore.last_ping ? esc(fmtDate(A.kaBefore.last_ping)) + ' (' + esc(A.kaBefore.source || '') + ')' : t('kaNever')}</div>` : ''}
+      <div class="hint">${t('kaHint')}</div></div>
+    <div class="card grid" style="margin-bottom:16px"><div class="row"><h2 style="margin:0">${t('updTitle')}</h2><span class="spacer"></span>
+      <button class="btn ghost sm" id="updCheck">⟳ ${t('updCheck')}</button>${A.upd && ['ready', 'portable-new'].includes(A.upd.state) ? `<button class="btn sm" id="updGo2">${A.upd.state === 'ready' ? t('updRestart') : t('updDownload')}</button>` : ''}</div>
+      <div>${t('updVersion')}: <b>v${esc(st.version)}</b> · <span id="updState">${esc(updText(A.upd))}</span></div>
+      <div class="hint">${t('updHint')}</div></div>
+    <div class="grid g2">
     <div class="card grid"><h2>${t('language')}</h2><div class="row"><button class="btn ${A.lang === 'th' ? '' : 'ghost'}" data-l="th">ภาษาไทย</button><button class="btn ${A.lang === 'en' ? '' : 'ghost'}" data-l="en">English</button></div>
       <h2 style="margin-top:12px">${t('configAt')}</h2><div class="mono">${esc(st.path)}</div><div class="small muted">${esc(st.supabaseUrl)} · ${esc(st.adminEmail)} · v${esc(st.version)}</div>
       <div class="row"><button class="btn ghost" id="expCfg">⬇ ${t('exportConfig')}</button></div><div class="hint">${t('exportConfigHint')}</div>
@@ -698,6 +733,9 @@ async function viewSettings() {
       <label class="f">${t('confirmPassword')}<input type="password" id="pNew2" minlength="8" required></label>
       <div class="row"><button class="btn">${t('save')}</button></div></form></div>`;
   $$('[data-l]').forEach((b) => { b.onclick = () => { setLang(b.dataset.l); applyStaticText(); pushDisplay(); viewSettings(); }; });
+  $('#kaPing').onclick = async () => { await keepAlivePing(); viewSettings(); };
+  $('#updCheck').onclick = () => window.kcs.update.check();
+  if ($('#updGo2')) $('#updGo2').onclick = updAction;
   $('#expCfg').onclick = async () => { const f = await window.kcs.cfg.exportFile(); if (f) toast(`${t('exported')}: ${f}`, 'ok', { label: t('showInFolder'), fn: () => window.kcs.showFile(f) }); };
   $('#rstCfg').onclick = async () => { if (await ask({ title: t('resetConfig'), body: esc(t('confirmResetCfg')), ok: t('resetConfig'), danger: true })) { await window.kcs.cfg.reset(); lockApp(); } };
   $('#pwForm').onsubmit = async (e) => {
@@ -707,6 +745,31 @@ async function viewSettings() {
     catch (err) { toast(String(err.message).includes('BAD_PASSWORD') ? t('errBadPassword') : errText(err), 'err'); }
   };
 }
+
+// ---------------------------------------------------------------- auto-update
+A.upd = null;
+function updText(s) {
+  if (!s) return '';
+  return ({ ready: t('updReady', s.version), downloading: t('updDownloading', s.version, s.percent || 0), 'portable-new': t('updPortable', s.version),
+    latest: t('updLatest'), checking: t('updChecking'), error: `${t('updError')}${s.message ? ': ' + s.message : ''}`, dev: t('updDev') })[s.state] || '';
+}
+async function updAction() {
+  if (!A.upd) return;
+  if (A.upd.state === 'portable-new') return window.kcs.update.releases();
+  if (A.upd.state === 'ready' && await ask({ title: t('updTitle'), body: esc(t('updConfirm')), ok: t('updRestart') })) window.kcs.update.install();
+}
+function renderUpdate(s) {
+  A.upd = s;
+  const bar = $('#updBar');
+  const show = s && ['ready', 'downloading', 'portable-new'].includes(s.state);
+  bar.hidden = !show;
+  bar.innerHTML = show ? `<span>${s.state === 'downloading' ? '⬇' : '🆕'} ${esc(updText(s))}</span>${s.state === 'downloading' ? ''
+    : `<button class="btn sm" id="updGo">${s.state === 'ready' ? t('updRestart') : t('updDownload')}</button>`}` : '';
+  if ($('#updGo')) $('#updGo').onclick = updAction;
+  if (A.view === 'settings' && $('#updState')) $('#updState').textContent = updText(s);
+}
+window.kcs.update.onStatus(renderUpdate);
+window.kcs.update.status().then(renderUpdate).catch(() => {});
 
 // ---------------------------------------------------------------- boot
 $('#langBtn').onclick = () => { setLang(A.lang === 'th' ? 'en' : 'th'); applyStaticText(); pushDisplay(); show(A.view); };

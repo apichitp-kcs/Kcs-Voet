@@ -1,0 +1,18 @@
+# KCS Vote keep-alive — Cloudflare Worker with a Cron Trigger only.
+# No routes and no public URL. Free plan: one tiny fetch per run (+1 retry).
+name = "kcs-vote-keepalive"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+workers_dev = false      # no *.workers.dev URL
+preview_urls = false
+
+[triggers]
+crons = ["0 */12 * * *"] # 00:00 and 12:00 UTC
+
+[observability]
+enabled = true           # results visible in the dashboard logs / `wrangler tail`
+
+# Secrets (never in this file):
+#   npx wrangler secret put SUPABASE_URL
+#   npx wrangler secret put SUPABASE_ANON_KEY
+#   npx wrangler secret put ALERT_WEBHOOK   (optional)

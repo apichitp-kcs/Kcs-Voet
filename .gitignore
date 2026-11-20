@@ -10,3 +10,4 @@ kcs-vote.config.json
 .DS_Store
 .wrangler/
 smoke-pkg/
+kcs-vote.config.backup.json

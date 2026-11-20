@@ -9,8 +9,9 @@ const ready = (async () => {
   await db.exec(`create role anon nologin; create role authenticated nologin; create schema auth;
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
     grant usage on schema auth, public to anon, authenticated; grant execute on function auth.uid() to anon, authenticated;`);
-  const sql = await (await fetch('../../supabase/migrations/20261119000001_kcs_vote_init.sql')).text();
-  await db.exec(sql);
+  for (const f of ['20261119000001_kcs_vote_init.sql', '20261119000002_keep_alive.sql']) await db.exec(await (await fetch('../../supabase/migrations/' + f)).text());
+  // simulate a Worker that stopped 5 days ago (so the stale banner shows)
+  await db.exec("insert into keep_alive_log values (1, now() - interval '5 days', 'cf-worker')");
   await db.query('insert into admins(user_id) values ($1)', [ADMIN]);
   window.__db = db;
   return db;
@@ -60,6 +61,7 @@ window.kcs = {
   qr: { dataUrl: async () => 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10" fill="#fff"/><rect x="1" y="1" width="3" height="3" fill="#1E2A78"/><rect x="6" y="1" width="3" height="3" fill="#1E2A78"/><rect x="1" y="6" width="3" height="3" fill="#1E2A78"/></svg>'),
     savePng: async () => null, posterPdf: async () => null, print: async () => null },
   showFile: async () => true,
+  update: { status: async () => ({ state: 'ready', version: '1.2.0', current: '1.1.0' }), check: async () => true, install: async () => true, releases: async () => true, onStatus: () => {} },
   display: { open: async () => true, close: async () => true, isOpen: async () => false, fullscreen: async () => true,
     send: async (s) => { window.__displayState = s; }, onState: () => {}, onClosed: () => {} },
 };

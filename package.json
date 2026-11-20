@@ -13,7 +13,9 @@
     "voter:deploy": "npm run voter:config && npx --yes wrangler pages deploy voter --project-name kcs-vote",
     "desktop:install": "cd desktop && npm install",
     "desktop:start": "cd desktop && npm start",
-    "desktop:dist": "cd desktop && npm run dist"
+    "desktop:dist": "cd desktop && npm run dist",
+    "keepalive:deploy": "cd keepalive-worker && npx --yes wrangler deploy",
+    "keepalive:tail": "cd keepalive-worker && npx --yes wrangler tail"
   },
   "author": "K Casting and Solution Co., Ltd.",
   "license": "UNLICENSED",
