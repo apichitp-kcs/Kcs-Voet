@@ -1,6 +1,6 @@
 {
   "name": "kcs-vote-desktop",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "KCS Vote — admin & results display",
   "main": "main.js",
   "scripts": {

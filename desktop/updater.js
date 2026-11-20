@@ -1,11 +1,28 @@
 // Auto-update from GitHub Releases (repo set in package.json -> build.publish).
 // * Installed (NSIS) app: electron-updater downloads new versions in the
 //   background and installs them when the app is closed (never mid-event),
-//   or immediately if the admin clicks "Restart & update".
+//   or immediately if the admin clicks "Restart & update". Both are SILENT:
+//   no installer wizard; the new version replaces the old one in the same
+//   folder and the app reopens by itself.
+// * Downloaded installers are deleted at start-up so they do not pile up.
 // * Portable exe cannot replace itself: it only checks the latest release and
 //   shows a "new version available" link.
 'use strict';
 const { app, net, shell } = require('electron');
+const fs = require('node:fs');
+const path = require('node:path');
+
+// electron-updater keeps downloaded installers in %LOCALAPPDATA%/<name>-updater.
+// At start-up nothing is being downloaded yet, so whatever is there is left
+// over from an update that is already installed: remove it to free ~130 MB.
+function cleanDownloads() {
+  try {
+    const base = process.env.LOCALAPPDATA;
+    if (!base) return;
+    const dir = path.join(base, `${require('./package.json').name}-updater`);
+    if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
+  } catch { /* in use or no permission: try again next start */ }
+}
 
 // Keep in sync with package.json -> build.publish (electron-builder strips the
 // build section from the packaged package.json, so it cannot be read at runtime).
@@ -55,9 +72,10 @@ function setup(onStatus) {
   notify = onStatus;
   if (!app.isPackaged || process.env.KCS_SMOKE_DIR) { set({ state: 'dev' }); return; }
   if (!isPortable) {
+    cleanDownloads();
     ({ autoUpdater } = require('electron-updater'));
     autoUpdater.autoDownload = true;
-    autoUpdater.autoInstallOnAppQuit = true;
+    autoUpdater.autoInstallOnAppQuit = true;   // silent when the app is closed
     autoUpdater.on('checking-for-update', () => set({ state: 'checking' }));
     autoUpdater.on('update-not-available', () => set({ state: 'latest' }));
     autoUpdater.on('update-available', (i) => set({ state: 'downloading', version: i.version, percent: 0 }));
@@ -73,6 +91,11 @@ module.exports = {
   setup,
   check,
   getStatus: () => status,
-  install: () => { if (autoUpdater && status.state === 'ready') autoUpdater.quitAndInstall(false, true); },
+  // isSilent = true (no wizard), isForceRunAfter = true (reopen the app)
+  install: () => {
+    if (!autoUpdater || status.state !== 'ready') return;
+    set({ state: 'installing' });
+    setTimeout(() => autoUpdater.quitAndInstall(true, true), 600);
+  },
   openReleases: () => shell.openExternal(RELEASES_URL),
 };
