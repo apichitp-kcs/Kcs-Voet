@@ -756,7 +756,7 @@ A.upd = null;
 function updText(s) {
   if (!s) return '';
   return ({ ready: t('updReady', s.version), downloading: t('updDownloading', s.version, s.percent || 0), 'portable-new': t('updPortable', s.version),
-    latest: t('updLatest'), checking: t('updChecking'), error: `${t('updError')}${s.message ? ': ' + s.message : ''}`, dev: t('updDev') })[s.state] || '';
+    latest: t('updLatest'), checking: t('updChecking'), error: `${t('updError')}${s.message ? ': ' + ({ NOT_READY: t('updNotReady'), OFFLINE: t('updOffline') }[s.message] || s.message) : ''}`, dev: t('updDev') })[s.state] || '';
 }
 async function updAction() {
   if (!A.upd) return;

@@ -33,14 +33,22 @@ async function checkPortable() {
     const rel = await res.json();
     if (newer(rel.tag_name, app.getVersion())) set({ state: 'portable-new', version: String(rel.tag_name).replace(/^v/, '') });
     else set({ state: 'latest' });
-  } catch (e) { set({ state: 'error', message: e.message }); }
+  } catch (e) { set({ state: 'error', message: short(e) }); }
+}
+
+// Short, readable reason instead of electron-updater's multi-line dump.
+function short(e) {
+  const m = String((e && e.message) || e || '');
+  if (/latest\.yml|404/i.test(m)) return 'NOT_READY';          // release still being built/uploaded
+  if (/ENOTFOUND|ETIMEDOUT|ECONNRE|net::ERR|EAI_AGAIN|offline/i.test(m)) return 'OFFLINE';
+  return m.split('\n')[0].slice(0, 120);
 }
 
 let autoUpdater = null;
 function check() {
   if (!app.isPackaged) return set({ state: 'dev' });
   if (isPortable) return checkPortable();
-  return autoUpdater.checkForUpdates().catch((e) => set({ state: 'error', message: e.message }));
+  return autoUpdater.checkForUpdates().catch((e) => set({ state: 'error', message: short(e) }));
 }
 
 function setup(onStatus) {
@@ -55,7 +63,7 @@ function setup(onStatus) {
     autoUpdater.on('update-available', (i) => set({ state: 'downloading', version: i.version, percent: 0 }));
     autoUpdater.on('download-progress', (p) => set({ state: 'downloading', percent: Math.round(p.percent) }));
     autoUpdater.on('update-downloaded', (i) => set({ state: 'ready', version: i.version }));
-    autoUpdater.on('error', (e) => set({ state: 'error', message: String(e && e.message || e).slice(0, 200) }));
+    autoUpdater.on('error', (e) => set({ state: 'error', message: short(e) }));
   }
   setTimeout(check, 5000);
   setInterval(check, 2 * 3600e3);

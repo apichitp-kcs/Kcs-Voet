@@ -70,7 +70,7 @@
         "provider": "github",
         "owner": "apichitp-kcs",
         "repo": "Kcs-Voet",
-        "releaseType": "release"
+        "releaseType": "draft"
       }
     ]
   }
