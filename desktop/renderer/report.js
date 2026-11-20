@@ -17,7 +17,7 @@ window.render = function render(d) {
   ${d.params.length ? `<div class="muted">${esc(L.params)}: ${d.params.map(([k, v]) => `${esc(k)} <b>${esc(v)}</b>`).join(' · ')}</div>` : ''}
   <h2>${esc(L.ranking)}</h2>
   <table><thead><tr><th>${esc(L.rankCols[0])}</th><th>${esc(L.rankCols[1])}</th><th class="barcell"></th><th class="n">${esc(L.rankCols[3])}</th><th class="n">${esc(L.rankCols[4])}</th></tr></thead><tbody>
-  ${d.scores.map((s) => `<tr class="r${s.rank}"><td>${s.rank}${s.is_tie ? ` <span class="flag">(${esc(L.tie)})</span>` : ''}</td><td>${esc(s.label)}</td>
+  ${d.scores.map((s) => `<tr class="r${s.rank}"><td>${s.rank}${s.is_tie ? ` <span class="flag">(${esc(L.tie)})</span>` : ''}</td><td>${esc(s.label)}${s.person ? `<div class="pp">${esc(s.person)}</div>` : ''}</td>
     <td class="barcell"><div class="bar" style="width:${(Number(s.score) / max * 100).toFixed(1)}%"></div></td><td class="n">${num(s.score)}</td><td class="n">${s.raw_votes}</td></tr>`).join('')}
   </tbody></table>
   <h2>${esc(L.turnout)}</h2>

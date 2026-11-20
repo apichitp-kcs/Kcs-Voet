@@ -18,6 +18,9 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const topic = () => A.topics.find((x) => x.id === A.topicId) || null;
 const tTitle = (tp) => (tp && ((A.lang === 'en' && tp.title_en) || tp.title)) || '';
 const oLabel = (o) => (A.lang === 'en' && o.label_en) || o.label;
+// name + position of the person behind an option (from the topic's option list)
+const personOf = (tp, optionId) => { const o = tp?.options?.find((x) => x.id === optionId); return { person_name: o?.person_name || null, person_title: o?.person_title || null }; };
+const personText = (p) => [p.person_name, p.person_title].filter(Boolean).join(' · ');
 const fmtDate = (iso) => (iso ? new Date(iso).toLocaleString(A.lang === 'th' ? 'th-TH' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '');
 const toLocalInput = (iso) => { if (!iso) return ''; const d = new Date(iso); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 16); };
 
@@ -241,7 +244,7 @@ async function pushDisplay() {
     voted: s ? s.voted : 0, eligible: s ? s.eligible : 0,
     voterUrl: A.cfg?.voterUrl || '', qr: A.qr,
     // results leave this window ONLY after the topic is revealed
-    results: revealed && s ? s.scores.map((x) => ({ id: x.option_id, label: x.label, label_en: x.label_en, score: x.score, raw: x.raw_votes, rank: x.rank, tie: x.is_tie && Number(x.score) > 0, position: x.position })) : null,
+    results: revealed && s ? s.scores.map((x) => ({ id: x.option_id, label: x.label, label_en: x.label_en, ...personOf(tp, x.option_id), score: x.score, raw: x.raw_votes, rank: x.rank, tie: x.is_tie && Number(x.score) > 0, position: x.position })) : null,
     weighted: tp ? tp.weighting_enabled : true,
   };
   window.kcs.display.send(state);
@@ -348,7 +351,7 @@ function updateLive() {
   $('#tieHint').textContent = anyTie ? `⚠ ${t('tieHint')}` : '';
   const isTie = (x) => x.is_tie && Number(x.score) > 0;
   $('#rankBody').innerHTML = s.scores.map((x, i) => `<tr class="${isTie(x) ? 'tie' : ''} ${i === 0 ? 'first' : ''}">
-    <td><span class="rankno r${x.rank}">${x.rank}</span></td><td>${esc(oLabel(x))}${isTie(x) ? ` <span class="badge warn">${t('tie')}</span>` : ''}</td>
+    <td><span class="rankno r${x.rank}">${x.rank}</span></td><td>${esc(oLabel(x))}${isTie(x) ? ` <span class="badge warn">${t('tie')}</span>` : ''}${personText(personOf(tp, x.option_id)) ? `<div class="small muted">👤 ${esc(personText(personOf(tp, x.option_id)))}</div>` : ''}</td>
     <td class="num">${tp.weighting_enabled ? Number(x.score).toFixed(4) : x.score}</td><td class="num">${x.raw_votes}</td>
     <td>${isTie(x) ? `<button class="btn ghost icon" data-mv="-1" data-i="${i}" ${i === 0 ? 'disabled' : ''}>▲</button><button class="btn ghost icon" data-mv="1" data-i="${i}" ${i === s.scores.length - 1 ? 'disabled' : ''}>▼</button>` : ''}</td></tr>`).join('');
   $$('#rankBody [data-mv]').forEach((b) => { b.onclick = () => moveTie(Number(b.dataset.i), Number(b.dataset.mv)); });
@@ -429,7 +432,7 @@ function exportData() {
     voted: s.voted, eligible: s.eligible, weighted: tp.weighting_enabled,
     method: tp.weighting_enabled ? L.weightedName : L.rawName,
     params: tp.weighting_enabled ? [[L.selfW, `×${Number(tp.self_vote_weight)}`], [L.minT, `${Number(tp.min_turnout_pct)}%`], [L.excl, tp.exclude_low_turnout ? L.yes : L.no]] : [],
-    scores: s.scores.map((x) => ({ rank: x.rank, label: oLabel(x), department: x.department, score: x.score, raw_votes: x.raw_votes, is_tie: x.is_tie && Number(x.score) > 0 })),
+    scores: s.scores.map((x) => ({ rank: x.rank, label: oLabel(x), person: personText(personOf(tp, x.option_id)), department: x.department, score: x.score, raw_votes: x.raw_votes, is_tie: x.is_tie && Number(x.score) > 0 })),
     turnout: s.turnout, rulesTitle: r.title, rules: r.lines, rulesLines: [r.title, ...r.lines.map((l, i) => `${i + 1}. ${l}`)], labels: L,
   };
 }
@@ -459,7 +462,8 @@ function editTopic(id) {
   const optRow = (o, i) => `<div class="opt-row" data-id="${o.id || ''}"><span class="n">${i + 1}</span>
     <input type="text" class="oTh" value="${esc(o.label)}" placeholder="${t('labelTh')}"><input type="text" class="oEn" value="${esc(o.label_en || '')}" placeholder="${t('labelEn')}">
     <select class="oDept">${deptOpts(o.department)}</select>
-    <span class="row" style="gap:4px;flex-wrap:nowrap"><button class="btn ghost icon" data-up>▲</button><button class="btn ghost icon" data-down>▼</button>${locked ? '' : '<button class="btn danger icon" data-del>✕</button>'}</span></div>`;
+    <span class="row" style="gap:4px;flex-wrap:nowrap"><button class="btn ghost icon" data-up>▲</button><button class="btn ghost icon" data-down>▼</button>${locked ? '' : '<button class="btn danger icon" data-del>✕</button>'}</span>
+    <div class="opt-person"><span class="pi" aria-hidden="true">👤</span><input type="text" class="oName" maxlength="120" value="${esc(o.person_name || '')}" placeholder="${t('personName')}"><input type="text" class="oPos" maxlength="120" value="${esc(o.person_title || '')}" placeholder="${t('personTitle')}"></div></div>`;
   $('#tEdit').innerHTML = `<form class="card grid" id="tForm">
     <div class="row"><h2 style="margin:0">${id ? t('edit') : t('newTopic')}</h2><span class="spacer"></span>
       ${id ? `<button type="button" class="btn ghost sm" id="dupT">${t('duplicate')}</button><button type="button" class="btn danger sm" id="delT" ${tp.status === 'open' ? 'disabled' : ''}>${t('delete')}</button>` : ''}</div>
@@ -469,8 +473,9 @@ function editTopic(id) {
       <label class="f">${t('descEn')}<textarea id="fDescEn">${esc(tp.description_en || '')}</textarea></label></div>
     <fieldset><legend>${t('options')}</legend>
       ${locked ? `<div class="badge warn">${t('optionsLocked')}</div>` : ''}
-      <div class="opt-row small muted"><span></span><span>${t('labelTh')}</span><span>${t('labelEn')}</span><span>${t('linkedDept')}</span><span></span></div>
-      <div id="opts" class="grid" style="gap:8px">${tp.options.map(optRow).join('')}</div>
+      <div class="opt-row opt-head small muted"><span></span><span>${t('labelTh')}</span><span>${t('labelEn')}</span><span>${t('linkedDept')}</span><span></span></div>
+      <div class="hint">👤 ${t('personHint')}</div>
+      <div id="opts" class="grid" style="gap:10px">${tp.options.map(optRow).join('')}</div>
       ${locked ? '' : `<div class="row"><button type="button" class="btn ghost sm" id="addO">＋ ${t('addOption')}</button><button type="button" class="btn ghost sm" id="fillD">🏢 ${t('fillDepts')} (${A.depts.length})</button></div>`}
     </fieldset>
     <fieldset><legend>${t('schedule')}</legend><div class="grid g2">
@@ -515,7 +520,7 @@ function editTopic(id) {
       open_at: iso($('#fOpen').value), close_at: iso($('#fClose').value),
       weighting_enabled: $('#fW').checked, self_vote_weight: Math.min(1, Math.max(0, Number($('#fSelf').value) || 0)),
       min_turnout_pct: Math.min(100, Math.max(0, Number($('#fMin').value) || 0)), exclude_low_turnout: $('#fEx').checked, allow_undo: $('#fUndo').checked,
-      options: $$('.opt-row[data-id]', optsEl).map((r) => ({ id: r.dataset.id || undefined, label: $('.oTh', r).value.trim(), label_en: $('.oEn', r).value.trim(), department: $('.oDept', r).value }))
+      options: $$('.opt-row[data-id]', optsEl).map((r) => ({ id: r.dataset.id || undefined, label: $('.oTh', r).value.trim(), label_en: $('.oEn', r).value.trim(), department: $('.oDept', r).value, person_name: $('.oName', r).value.trim(), person_title: $('.oPos', r).value.trim() }))
         .filter((o) => o.label),
     };
     if (tp.allow_undo && !payload.allow_undo && tp.votes > 0

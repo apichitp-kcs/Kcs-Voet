@@ -26,7 +26,7 @@ KCS-Vote/
 ## 1. Supabase (one time, ~10 minutes)
 
 1. Create a **new** project at <https://supabase.com> (free plan, region *Southeast Asia (Singapore)*). Save the database password somewhere safe.
-2. **SQL Editor → New query** → paste and **Run** each file in `supabase/migrations/` **in order**: `…0001_kcs_vote_init.sql`, then `…0002_keep_alive.sql`.
+2. **SQL Editor → New query** → paste and **Run** each file in `supabase/migrations/` **in order**: `…0001_kcs_vote_init.sql`, then `…0002_keep_alive.sql`, then `…0003_option_person.sql` (name + position on each choice).
    *(Alternative with the CLI: `npx supabase link --project-ref <ref>` then `npx supabase db push`.)*
 3. **Authentication → Users → Add user → Create new user**: admin email + strong password, tick *Auto Confirm User*.
 4. **SQL Editor**: open `supabase/add-admin.sql`, replace the email, **Run**. It must list the admin.

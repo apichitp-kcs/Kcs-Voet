@@ -127,6 +127,10 @@
     .replace(/[ัิ-ฺ็-๎̀-ͯ]/g, '').replace(/\s+/g, '');
   const fullName = (v) => `${v.first_name} ${v.last_name || ''}`.trim();
   const label = (o) => (S.lang === 'en' && o.label_en) || o.label;
+  // who is behind a choice: name + position (both optional, set by the admin)
+  const personHtml = (o) => (o.person_name || o.person_title
+    ? `<span class="opt-person">${o.person_name ? `<span class="pn">${esc(o.person_name)}</span>` : ''}${o.person_title ? `<span class="pt">${esc(o.person_title)}</span>` : ''}</span>`
+    : '');
   const title = (tp) => (S.lang === 'en' && tp.title_en) || tp.title;
   const desc = (tp) => (S.lang === 'en' && tp.description_en) || tp.description || '';
   const fmtTime = (iso) => new Date(iso).toLocaleString(S.lang === 'th' ? 'th-TH' : 'en-GB',
@@ -269,6 +273,7 @@
       <div class="options">${S.topic.options.map((o) => `
         <button class="option ${S.option && S.option.id === o.id ? 'selected' : ''}" data-act="option" data-id="${o.id}" aria-pressed="${S.option && S.option.id === o.id}">
           <span class="opt-label">${esc(label(o))}</span>
+          ${personHtml(o)}
           ${o.department && o.department === S.me.department ? `<span class="tag">${t('yourDept')}</span>` : ''}
           <span class="check" aria-hidden="true">✓</span>
         </button>`).join('')}</div>
@@ -279,7 +284,7 @@
     review: () => `${stepHeader(t('step3'))}
       <div class="card review">
         <p class="muted">${t('reviewName')}</p><p class="strong">${esc(fullName(S.me))} · ${esc(S.me.department)}</p>
-        <p class="muted">${t('reviewChoice')}</p><p class="choice">${esc(label(S.option))}</p>
+        <p class="muted">${t('reviewChoice')}</p><p class="choice">${esc(label(S.option))}</p>${personHtml(S.option)}
         <p class="note">${t('reviewNote')}</p>
         ${S.error ? `<p class="err" role="alert">${esc(T[S.lang].errors[S.error] || T[S.lang].errors.UNKNOWN)}</p>` : ''}
         <div class="row">
@@ -395,7 +400,8 @@
     const topic = { id: 'demo-topic', title: 'รางวัลแผนกยอดเยี่ยมประจำปี 2569', title_en: 'Best Department Award 2026',
       description: 'เลือกแผนกที่คุณคิดว่าทำผลงานได้ดีที่สุดในปีนี้', description_en: 'Choose the department that performed best this year',
       state: 'open', open_at: null, close_at: new Date(Date.now() + 3 * 3600e3).toISOString(),
-      options: depts.map((d, i) => ({ id: 'opt-' + i, label: d, label_en: null, department: d })) };
+      options: depts.map((d, i) => ({ id: 'opt-' + i, label: d, label_en: null, department: d,
+        person_name: i % 4 === 3 ? null : firsts[i % firsts.length] + ' ' + lasts[i % lasts.length], person_title: i % 4 === 2 ? null : 'ผู้จัดการแผนก' + d })) };
     return { voters, topic };
   })();
   async function demoRpc(fn, args) {

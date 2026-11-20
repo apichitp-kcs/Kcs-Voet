@@ -9,7 +9,7 @@ const ready = (async () => {
   await db.exec(`create role anon nologin; create role authenticated nologin; create schema auth;
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
     grant usage on schema auth, public to anon, authenticated; grant execute on function auth.uid() to anon, authenticated;`);
-  for (const f of ['20261119000001_kcs_vote_init.sql', '20261119000002_keep_alive.sql']) await db.exec(await (await fetch('../../supabase/migrations/' + f)).text());
+  for (const f of ['20261119000001_kcs_vote_init.sql', '20261119000002_keep_alive.sql', '20261120000003_option_person.sql']) await db.exec(await (await fetch('../../supabase/migrations/' + f)).text());
   // simulate a Worker that stopped 5 days ago (so the stale banner shows)
   await db.exec("insert into keep_alive_log values (1, now() - interval '5 days', 'cf-worker')");
   await db.query('insert into admins(user_id) values ($1)', [ADMIN]);

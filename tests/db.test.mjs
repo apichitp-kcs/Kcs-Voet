@@ -420,3 +420,49 @@ describe('keep-alive', () => {
     assert.ok(s.last_ping);
   });
 });
+
+// ---------------------------------------------------------------------------
+describe('option person (name + position)', () => {
+  test('saved, shown to voters, kept on edit after votes, copied on duplicate', async () => {
+    const db = await freshDb();
+    const e = await seedEmployees(db, { A: 3, B: 3 });
+    const id = await asAdmin(db, async () => (await rpc(db, 'select admin_save_topic($1::jsonb) as id', [JSON.stringify({
+      title: 'หัวหน้ายอดเยี่ยม',
+      options: [
+        { label: 'ผู้จัดการฝ่ายผลิต', department: 'A', person_name: '  สมชาย ใจดี ', person_title: 'Production Manager' },
+        { label: 'หัวหน้าแผนก B', department: 'B' },
+      ],
+    })]))[0].id);
+    await asAdmin(db, () => rpc(db, `select admin_set_status($1, 'open')`, [id]));
+
+    const [{ t }] = await asAnon(db, () => rpc(db, 'select get_open_topics() as t'));
+    const opts = t[0].options;
+    assert.equal(opts[0].person_name, 'สมชาย ใจดี');
+    assert.equal(opts[0].person_title, 'Production Manager');
+    assert.equal(opts[1].person_name, null);
+
+    await vote(db, id, e.A[0], opts[1].id);
+    // after votes: options are frozen but the name/position may still be corrected
+    await asAdmin(db, () => rpc(db, 'select admin_save_topic($1::jsonb)', [JSON.stringify({
+      id, title: 'หัวหน้ายอดเยี่ยม',
+      options: [
+        { id: opts[0].id, label: 'ผู้จัดการฝ่ายผลิต', department: 'A', person_name: 'สมชาย ใจดีมาก', person_title: '' },
+        { id: opts[1].id, label: 'หัวหน้าแผนก B', department: 'B', person_name: 'สมหญิง' },
+      ],
+    })]));
+    const rows = await rpc(db, 'select person_name, person_title from topic_options where topic_id = $1 order by sort_order', [id]);
+    assert.deepEqual(rows, [
+      { person_name: 'สมชาย ใจดีมาก', person_title: null },
+      { person_name: 'สมหญิง', person_title: null },
+    ]);
+
+    const [{ c }] = await asAdmin(db, () => rpc(db, 'select admin_duplicate_topic($1) as c', [id]));
+    const copy = await rpc(db, 'select person_name from topic_options where topic_id = $1 order by sort_order', [c]);
+    assert.deepEqual(copy.map((r) => r.person_name), ['สมชาย ใจดีมาก', 'สมหญิง']);
+
+    // admin list carries the fields too
+    const [{ l }] = await asAdmin(db, () => rpc(db, 'select admin_list_topics() as l'));
+    const mine = l.find((x) => x.id === id);
+    assert.equal(mine.options.find((o) => o.id === opts[1].id).person_name, 'สมหญิง');
+  });
+});

@@ -215,7 +215,7 @@ async function writeResultsXlsx(file, d) {
   ws.getCell('C4').value = `${d.labels.voted}: ${d.voted} / ${d.eligible}  ·  ${d.labels.method}: ${d.method}`;
   ws.getRow(7).values = d.labels.rankCols;
   styleHeader(ws.getRow(7));
-  d.scores.forEach((s) => ws.addRow([s.rank, s.label, s.department || '', Number(s.score), s.raw_votes, s.is_tie ? d.labels.tie : '']));
+  d.scores.forEach((s) => ws.addRow([s.rank, s.person ? `${s.label} — ${s.person}` : s.label, s.department || '', Number(s.score), s.raw_votes, s.is_tie ? d.labels.tie : '']));
   ws.columns = [{ width: 8 }, { width: 36 }, { width: 22 }, { width: 16 }, { width: 14 }, { width: 10 }];
   ws.getColumn(4).numFmt = d.weighted ? '0.0000' : '0';
 

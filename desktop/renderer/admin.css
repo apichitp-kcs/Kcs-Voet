@@ -109,6 +109,10 @@ tr.first td { font-weight: 600; }
 .topic-item b { color: var(--blue); }
 .opt-row { display: grid; grid-template-columns: 26px 1fr 1fr 220px auto; gap: 8px; align-items: center; }
 .opt-row .n { color: var(--muted); text-align: right; font-size: 13px; }
+#opts .opt-row { padding-bottom: 10px; border-bottom: 1px dashed var(--line, #e3e6f0); }
+#opts .opt-row:last-child { border-bottom: 0; }
+.opt-person { grid-column: 2 / 5; display: grid; grid-template-columns: 22px 1fr 1fr; gap: 8px; align-items: center; }
+.opt-person .pi { text-align: center; opacity: .7; }
 fieldset { border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px 16px; margin: 0; display: grid; gap: 12px; }
 legend { padding: 0 6px; font-weight: 600; color: var(--blue); }
 .hint { font-size: 12.5px; color: var(--muted); }

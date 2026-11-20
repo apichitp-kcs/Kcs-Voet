@@ -12,6 +12,7 @@ let S = null; let modeKey = ''; let pending = null; let ready = false;
 const t = (k, ...a) => { const v = STR[S?.lang || 'th'][k]; return typeof v === 'function' ? v(...a) : v; };
 const title = () => (S.topic && ((S.lang === 'en' && S.topic.title_en) || S.topic.title)) || 'KCS Vote';
 const lbl = (r) => (S.lang === 'en' && r.label_en) || r.label;
+const who = (r) => [r.person_name, r.person_title].filter(Boolean).join(' · ');
 
 // Register before any await so the first state from main is never missed.
 window.kcs.display.onState((s) => { if (!ready) { pending = s; return; } applyState(s); });
@@ -164,13 +165,15 @@ class RevealScene {
     const num = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(s.w, s.h) * 0.85, Math.min(s.w, s.h) * 0.85), new THREE.MeshBasicMaterial({ map: numTex, transparent: true }));
     num.position.set(0, s.h / 2, 1.205); num.scale.setScalar(0.0001); group.add(num);
     const lines = wrap2(lbl(r), 16).map((x) => ({ text: x }));
+    if (r.person_name) lines.push({ text: r.person_name, scale: 0.62, weight: 500, color: '#dfe5ff' });
     lines.push({ text: scoreText(r), scale: 0.62, weight: 500, color: MEDAL_CSS[p] });
-    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: textTexture(lines, { w: 1024, h: 420, size: 120, weight: 700, color: '#ffffff', bg: 'rgba(10,16,60,0.78)' }), transparent: true, depthWrite: false }));
+    const lh = r.person_name ? 520 : 420;
+    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: textTexture(lines, { w: 1024, h: lh, size: 120, weight: 700, color: '#ffffff', bg: 'rgba(10,16,60,0.78)' }), transparent: true, depthWrite: false }));
     const lw = p === 0 ? 4.6 : 3.6;
     label.scale.set(0.0001, 0.0001, 1); label.position.set(0, s.h + 1.35 + (p === 0 ? 0.3 : 0), 0.4);
     group.add(label);
     const light = new THREE.PointLight(MEDAL[p], 0, 9, 1.6); light.position.set(0, s.h + 2.2, 2.4); group.add(light);
-    return { r, p, s, group, block, num, label, lw, light, risen: false };
+    return { r, p, s, group, block, num, label, lw, la: lh / 1024, light, risen: false };
   }
 
   anim(dur, fn, delay = 0) {
@@ -183,7 +186,7 @@ class RevealScene {
   showLabel(slot) {
     slot.light.intensity = 0;
     this.anim(1.2, (k) => { slot.light.intensity = k * (slot.p === 0 ? 30 : 14); });
-    return this.anim(0.8, (k) => { const e = ease.outBack(k); slot.label.scale.set(slot.lw * e, slot.lw * 0.41 * e, 1); });
+    return this.anim(0.8, (k) => { const e = ease.outBack(k); slot.label.scale.set(slot.lw * e, slot.lw * slot.la * e, 1); });
   }
   focus(x, y, dist, height) {
     this.camTargetGoal.set(x * 0.6, y, 0);
@@ -292,7 +295,7 @@ async function runReveal() {
   const cap = (r, p) => {
     const cls = ['gold', 'silver', 'bronze'][p] || '';
     $('#cap').innerHTML = `<div class="caption ${cls}"><div class="rk">${esc(p === 0 ? `🏆 ${t('winner')}` : t('place', r.rank))}${r.tie ? `<span class="tie">${esc(STR[S.lang].tie)}</span>` : ''}</div>
-      <div class="nm">${esc(lbl(r))}</div><div class="sc">${esc(scoreText(r))}</div></div>`;
+      <div class="nm">${esc(lbl(r))}</div>${who(r) ? `<div class="pp">👤 ${esc(who(r))}</div>` : ''}<div class="sc">${esc(scoreText(r))}</div></div>`;
   };
   await wait(3000); if (!alive()) return;
   $('#rt').classList.add('small');
@@ -377,7 +380,7 @@ function enterRanking() {
   const res = [...(S.results || [])].sort((a, b) => a.position - b.position);
   layer.innerHTML = `${brand()}<div class="panel-title fade">${esc(t('fullRanking'))}<small>${esc(title())}</small></div>
     <div class="chart-wrap" id="cw"></div>
-    <div class="rank-list" style="--rs:${Math.min(1, 9 / Math.max(res.length, 1)).toFixed(2)}">${res.map((r, i) => `<div class="it r${r.rank}" style="animation-delay:${i * 0.08}s"><span class="no">${r.rank}</span><span>${esc(lbl(r))}${r.tie ? ` <small>(${esc(STR[S.lang].tie)})</small>` : ''}</span><span class="sc">${esc(scoreText(r))}</span></div>`).join('')}</div>`;
+    <div class="rank-list" style="--rs:${Math.min(1, 9 / Math.max(res.length, 1)).toFixed(2)}">${res.map((r, i) => `<div class="it r${r.rank}" style="animation-delay:${i * 0.08}s"><span class="no">${r.rank}</span><span>${esc(lbl(r))}${r.tie ? ` <small>(${esc(STR[S.lang].tie)})</small>` : ''}${r.person_name ? `<small class="pp">${esc(r.person_name)}</small>` : ''}</span><span class="sc">${esc(scoreText(r))}</span></div>`).join('')}</div>`;
   chart = new Bars3D($('#cw'), { theme: 'dark', podiumColors: true });
   chart.setData(res.map((r) => ({ id: r.id, label: lbl(r), value: S.weighted ? Number(r.score) : r.raw, tie: r.tie })));
 }
